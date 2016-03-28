@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/index.css">
+    <title>Title</title>
+</head>
+<body>
+    <h2 id="wait" style="display: none;">Ваше письмо отправялеться, это может занять некоторое время...</h2>
+    <form id="form" enctype="multipart/form-data" onsubmit="return false">
+        <h4>
+            <label for="first_name">First name:</label>
+            <input type="text" id="first_name" name="first_name" required="required" />
+            <label for="second_name">Second name:</label>
+            <input type="text" id="second_name" name="second_name" required="required" />
+        </h4>
+        <textarea id="content" name="content" style="width: 50vmax;height: 25vmax"></textarea>
+        <br />
+        <div id="files">
+            <div class="fileform">
+                <div class="fileformlabel" id="fileformlabel_1"></div>
+                <div class="selectbutton" id="selectbutton_1">Обзор</div>
+                <input type="file" name="file[]" class="upload" id="upload_1" onchange="getName(this.value,this.id);" />
+            </div>
+        </div>
+        <br />
+        <input type="submit" value="Send"/>
+    </form>
+
+</body>
+<script type="text/javascript" src="js/jquery-2.2.2.min.js"></script>
+<script type="text/javascript" src="js/nicEdit.js"></script>
+<script type="text/javascript">
+    function getName (str,id){
+        var i;
+        if (str.lastIndexOf('\\')){
+            i = str.lastIndexOf('\\')+1;
+        }
+        else{
+            i = str.lastIndexOf('/')+1;
+        }
+        var filename = str.slice(i);
+        var after=id.substring(id.lastIndexOf('_')+1,id.length)
+       $("#fileformlabel_"+after).html(filename);
+        var need_more=true;
+        $.each($('input[type=file]'), function(i, obj) {
+            if(!obj.value){
+                need_more=false;
+            }
+        })
+        if(filename && filename!=""&&need_more ) {
+            after++;
+            $("#files").append('<div class="fileform" id="fileform_' + after + '">' +
+                    '<div class="fileformlabel" id="fileformlabel_' + after + '"></div>' +
+                    '<div class="selectbutton" id="selectbutton_' + after + '">Обзор</div>' +
+                    '<input type="file" name="file[]" class="upload" id="upload_' + after + '" onchange="getName(this.value,this.id);" /> </div>');
+        }
+    }
+    bkLib.onDomLoaded(function() { nicEditors.allTextAreas() });
+    $(document).ready(function(){
+        $("#form").submit(function() {
+            $('input[type="submit"]').prop('disabled', true);//вырубаем submit
+            var nicE = new nicEditors.findEditor('content');
+            var form_data=new FormData($(this).get(0));
+
+            form_data.append('content',nicE.getContent());
+
+            $.each($('input[type=file]'), function(i, obj) {
+                $.each(obj.files,function(j,file){
+                    form_data.append('files['+i+']', file);//готовим масив из  файлов
+                });
+            });
+
+            $("#wait").slideDown();//опускаем табличку ждать
+            $.ajax({
+                type: "POST",
+                url: "send.php",
+                data: form_data,
+                processData:false,
+                contentType: false,
+                success: function () {
+                    $("input[type=text], input[type=file]").val("");//стираем все прежние даные
+                    nicE.setContent( '' );
+                    $(".fileformlabel").text("");
+                    $("#wait").slideUp();//прячем ждать
+                    $('input[type="submit"]').prop('disabled', false);//врубаем submit
+                    alert("Ваше сообщение отправлено!");
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                    $("#wait").slideUp();//прячем ждать
+                    $('input[type="submit"]').prop('disabled', false);//врубаем submit
+                    alert("Что то пошло не так =(");
+                }
+            });
+        });
+    });
+</script>
+
+</html>
